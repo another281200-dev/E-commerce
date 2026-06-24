@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CartItem, ViewState } from '../types';
 import { HelpCircle, CheckCircle, ArrowLeft, ShieldCheck, MapPin, CreditCard, Tag, Sparkles, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,12 +12,16 @@ interface CheckoutViewProps {
   cartItems: CartItem[];
   setCartItems: React.Dispatch<React.SetStateAction<CartItem[]>>;
   setView: (view: ViewState) => void;
+  authUser: { id: string; name: string; email: string } | null;
+  isAuthenticated: boolean;
 }
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({
   cartItems,
   setCartItems,
   setView,
+  authUser,
+  isAuthenticated,
 }) => {
   // Address form fields
   const [address, setAddress] = useState({
@@ -44,6 +48,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const [promoError, setPromoError] = useState('');
   const [showCvvTip, setShowCvvTip] = useState(false);
   const [formErrors, setFormErrors] = useState<{ cvv?: string; fullName?: string }>({});
+  const [sessionValid, setSessionValid] = useState<boolean | null>(null);
+  const [sessionError, setSessionError] = useState('');
+  const [sessionExpiry, setSessionExpiry] = useState('');
 
   // Success Modal Overlay
   const [orderComplete, setOrderComplete] = useState(false);
@@ -73,6 +80,42 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
   const grandTotal = Math.max(0, itemsSubtotal + shippingCost - discountAmount);
 
+  useEffect(() => {
+    const validateSession = async () => {
+      if (!isAuthenticated) {
+        setSessionValid(false);
+        setSessionError('You must be signed in to complete checkout.');
+        return;
+      }
+
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setSessionValid(false);
+        setSessionError('Authentication token not found. Please sign in again.');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/validate', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          throw new Error('Session expired or invalid.');
+        }
+
+        const data = await response.json();
+        setSessionValid(Boolean(data.valid));
+        setSessionExpiry(data.expiresAt || '');
+      } catch (error) {
+        setSessionValid(false);
+        setSessionError(error instanceof Error ? error.message : 'Unable to validate session.');
+      }
+    };
+
+    validateSession();
+  }, [isAuthenticated]);
+
   const applyPromoCode = () => {
     setPromoError('');
     const code = promoInput.trim().toUpperCase();
@@ -89,6 +132,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!sessionValid) {
+      setSessionError('Please sign in and validate your session before placing an order.');
+      return;
+    }
     const errors: { cvv?: string; fullName?: string } = {};
 
     if (!payment.cvv || payment.cvv.length < 3) {
@@ -116,22 +163,62 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     setView('home');
   };
 
+  if (sessionValid === false) {
+    return (
+      <div className="pb-16 space-y-6" id="checkout-view-container">
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-extrabold text-rose-800">Authentication Required</h1>
+          <p className="mt-3 text-sm text-rose-700">
+            {sessionError || 'Please sign in to continue with checkout.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setView('login')}
+            className="mt-6 inline-flex items-center justify-center rounded-2xl bg-rose-600 px-6 py-3 text-sm font-semibold text-white hover:bg-rose-700 transition-colors"
+          >
+            Sign in to continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionValid === null) {
+    return (
+      <div className="pb-16 flex min-h-[50vh] items-center justify-center">
+        <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-sm text-center">
+          <p className="text-sm text-slate-500">Validating your secure session before checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pb-16 space-y-6" id="checkout-view-container">
       
       {/* Header breadcrumb */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setView('cart')}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 transition-colors shadow-xs"
-          type="button"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <h1 className="font-black text-2xl tracking-tight text-slate-900">Secure Checkout</h1>
-          <p className="text-xs text-slate-500 font-mono text-emerald-600">Secure ledger connectivity authenticated</p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setView('cart')}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 transition-colors shadow-xs"
+            type="button"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="font-black text-2xl tracking-tight text-slate-900">Secure Checkout</h1>
+            <p className="text-xs text-slate-500 font-mono text-emerald-600">Secure ledger connectivity authenticated</p>
+            {authUser && (
+              <p className="mt-1 text-xs text-slate-500">Signed in as <span className="font-semibold text-slate-900">{authUser.name.split(' ')[0]}</span></p>
+            )}
+          </div>
         </div>
+        {sessionExpiry && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            Session expires at {new Date(sessionExpiry).toLocaleString()}.
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

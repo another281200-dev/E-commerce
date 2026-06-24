@@ -102,30 +102,12 @@ export const Footer: React.FC<FooterProps> = ({ setView }) => {
                 Elevated Interiors
               </button>
             </li>
+            <li>
+              <button onClick={() => setView('login')} className="hover:text-white transition-colors" type="button">
+                Sign In / Sign Up
+              </button>
+            </li>
           </ul>
-        </div>
-
-        {/* Global Network countries info */}
-        <div className="text-left">
-          <h4 className="font-bold text-xs text-white uppercase tracking-widest mb-4">International Hubs</h4>
-          <ul className="space-y-2 text-xs text-slate-500">
-            <li>Seattle, WA &bull; North America</li>
-            <li>London, UK &bull; European Region</li>
-            <li>Tokyo, Japan &bull; Asia-Pacific</li>
-            <li>Sydney, NSW &bull; Oceania Sector</li>
-          </ul>
-        </div>
-
-        {/* Corporate contact */}
-        <div className="text-left space-y-4">
-          <div>
-            <h4 className="font-bold text-xs text-white uppercase tracking-widest mb-2">Need Assistance?</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">Our multi-lingual global desk is staffed 24/7. Reach out anywhere, anytime.</p>
-          </div>
-          <div className="rounded-lg bg-slate-900 border border-slate-800 p-3.5 text-[11px] font-mono flex items-center gap-2">
-            <Mail className="w-4 h-4 text-indigo-400" />
-            <span>global@desk-support.net</span>
-          </div>
         </div>
 
       </div>

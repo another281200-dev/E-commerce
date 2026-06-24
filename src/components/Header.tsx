@@ -14,6 +14,8 @@ interface HeaderProps {
   cartCount: number;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  authUser: { id: string; name: string; email: string } | null;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   cartCount,
   searchQuery,
   setSearchQuery,
+  authUser,
+  onLogout,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -45,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
           
           {/* Logo Brand */}
           <div 
-            className="flex flex-shrink-0 cursor-pointer items-center gap-2" 
+            className="flex shrink-0 cursor-pointer items-center gap-2" 
             onClick={() => setView('home')}
             id="logo-container"
           >
@@ -53,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
               G
             </div>
             <div className="hidden sm:block">
-              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white to-indigo-200 bg-clip-text text-transparent">GlobalMarket</span>
+              <span className="font-extrabold text-xl tracking-tight bg-linear-to-r from-white to-indigo-200 bg-clip-text text-transparent">GlobalMarket</span>
               <span className="block text-[10px] text-indigo-400 font-mono tracking-widest uppercase">Shop the World</span>
             </div>
           </div>
@@ -97,22 +101,31 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="hidden md:flex items-center gap-1.5 cursor-pointer text-sm font-medium text-slate-300 hover:text-white px-2 py-1 rounded-md hover:bg-slate-800 transition-colors">
               <Globe className="h-4 w-4" />
               <span>EN / INR</span>
-              <ChevronDown className="h-3 h-3 text-slate-400" />
+              <ChevronDown className="h-3 w-3 text-slate-400" />
             </div>
 
             {/* Account Info */}
-            <div className="hidden sm:flex items-center gap-1.5 cursor-pointer text-sm font-medium text-slate-300 hover:text-white px-2 py-1 rounded-md hover:bg-slate-800 transition-colors">
+            <button
+              onClick={() => (authUser ? onLogout() : setView('login'))}
+              className="hidden sm:flex items-center gap-1.5 text-sm text-slate-300 hover:text-white px-2 py-1 rounded-md hover:bg-slate-800 transition-colors"
+              type="button"
+              id="account-nav-button"
+            >
               <User className="h-4 w-4" />
               <div className="text-left">
-                <span className="block text-[10px] text-slate-400 font-sans">Hello, Sign In</span>
-                <span className="block font-semibold leading-tight">Account &amp; Lists</span>
+                <span className="block text-[10px] text-slate-400 font-sans">
+                  {authUser ? `Hi, ${authUser.name.split(' ')[0]}` : 'Hello, Sign In'}
+                </span>
+                <span className="block font-semibold leading-tight">
+                  {authUser ? 'Sign Out' : 'Account & Lists'}
+                </span>
               </div>
-            </div>
+            </button>
 
             {/* Shopping Cart Indicator */}
             <div 
               onClick={() => setView('cart')}
-              className={`relative flex items-center justify-center gap-2 cursor-pointer rounded-full p-2.5 transition-all ₹{
+              className={`relative flex items-center justify-center gap-2 cursor-pointer rounded-full p-2.5 transition-all ${
                 activeView === 'cart' 
                   ? 'bg-indigo-600 text-white shadow-md' 
                   : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
@@ -166,7 +179,7 @@ export const Header: React.FC<HeaderProps> = ({
                   setView(item.view);
                   setSearchQuery('');
                 }}
-                className={`flex items-center gap-1.5 font-medium transition-colors ₹{
+                className={`flex items-center gap-1.5 transition-colors ${
                   activeView === item.view 
                     ? 'text-indigo-400 font-semibold border-b-2 border-indigo-500 pb-1 -mb-1' 
                     : 'text-slate-300 hover:text-white'
@@ -217,7 +230,7 @@ export const Header: React.FC<HeaderProps> = ({
                     setSearchQuery('');
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`flex items-center gap-2 rounded-lg p-2.5 text-sm font-medium transition-colors ₹{
+                  className={`flex items-center gap-2 rounded-lg p-2.5 text-sm font-medium transition-colors ${
                     activeView === item.view 
                       ? 'bg-indigo-600 text-white' 
                       : 'bg-slate-800 text-slate-200 hover:bg-slate-700'

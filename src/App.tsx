@@ -13,6 +13,7 @@ import { FashionView } from './components/FashionView';
 import { BeautyView } from './components/BeautyView';
 import { CartView } from './components/CartView';
 import { CheckoutView } from './components/CheckoutView';
+import { LoginView } from './components/LoginView';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart, Sparkles, X, Check } from 'lucide-react';
 
@@ -20,11 +21,49 @@ export default function App() {
   const [activeView, setView] = useState<ViewState>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  
+  const [authUser, setAuthUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [pendingView, setPendingView] = useState<ViewState | null>(null);
+
   // Custom toast notification states
   const [notification, setNotification] = useState<{ message: string; subText?: string; visible: boolean } | null>(null);
 
-  // Load cart items from localStorage on initial build
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+    setAuthUser(null);
+    setPendingView(null);
+    setNotification({ message: 'Logged out', subText: 'You have been signed out securely.', visible: true });
+    setView('home');
+  };
+
+  // Load cart items and auth user from localStorage on initial build
+  const verifyAuthToken = async () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      setAuthUser(null);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/validate', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        throw new Error('Token validation failed');
+      }
+      const data = await response.json();
+      setAuthUser(data.user ?? null);
+      if (!data.user) {
+        localStorage.removeItem('authUser');
+      }
+    } catch (err) {
+      console.warn('Auth validation failed', err);
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      setAuthUser(null);
+    }
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem('globalmarket_cart');
     if (saved) {
@@ -34,6 +73,17 @@ export default function App() {
         console.error('Error parsing cart storage', err);
       }
     }
+
+    const authUserJson = localStorage.getItem('authUser');
+    if (authUserJson) {
+      try {
+        setAuthUser(JSON.parse(authUserJson));
+      } catch (err) {
+        console.error('Error parsing auth user', err);
+      }
+    }
+
+    verifyAuthToken();
   }, []);
 
   // Save to localStorage when updated
@@ -77,11 +127,40 @@ export default function App() {
   // Aggregate item quantities
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
+  const handleViewChange = (view: ViewState) => {
+    if ((view === 'cart' || view === 'checkout') && !authUser) {
+      setPendingView(view);
+      setNotification({ message: 'Sign in required', subText: 'Please log in before accessing your cart or checkout.', visible: true });
+      setView('login');
+      return;
+    }
+
+    setView(view);
+  };
+
+  const handleLoginSuccess = (redirectTo?: ViewState) => {
+    const authUserJson = localStorage.getItem('authUser');
+    if (authUserJson) {
+      try {
+        setAuthUser(JSON.parse(authUserJson));
+      } catch (err) {
+        console.error('Error parsing auth user', err);
+      }
+    }
+
+    if (redirectTo && redirectTo !== 'login') {
+      setPendingView(null);
+      setView(redirectTo);
+      return;
+    }
+    setView('home');
+  };
+
   // Route renderer helper
   const renderActiveView = () => {
     switch (activeView) {
       case 'home':
-        return <HomeView setView={setView} />;
+        return <HomeView setView={handleViewChange} />;
       case 'electronics':
         return <ElectronicsView onAddToCart={handleAddToCart} searchQuery={searchQuery} />;
       case 'fashion':
@@ -89,9 +168,11 @@ export default function App() {
       case 'beauty':
         return <BeautyView onAddToCart={handleAddToCart} searchQuery={searchQuery} />;
       case 'cart':
-        return <CartView cartItems={cartItems} setCartItems={setCartItems} setView={setView} />;
+        return <CartView cartItems={cartItems} setCartItems={setCartItems} setView={handleViewChange} isAuthenticated={Boolean(authUser)} authUser={authUser} />;
       case 'checkout':
-        return <CheckoutView cartItems={cartItems} setCartItems={setCartItems} setView={setView} />;
+        return <CheckoutView cartItems={cartItems} setCartItems={setCartItems} setView={handleViewChange} isAuthenticated={Boolean(authUser)} authUser={authUser} />;
+      case 'login':
+        return <LoginView pendingView={pendingView} onLoginSuccess={handleLoginSuccess} />;
       default:
         return <HomeView setView={setView} />;
     }
@@ -103,10 +184,12 @@ export default function App() {
       {/* Top Main Navigation Header */}
       <Header
         activeView={activeView}
-        setView={setView}
+        setView={handleViewChange}
         cartCount={totalCartCount}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        authUser={authUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Layout Block */}
@@ -126,7 +209,7 @@ export default function App() {
       </main>
 
       {/* Corporate Polished Footer */}
-      <Footer setView={setView} />
+      <Footer setView={handleViewChange} />
 
       {/* Interactive Toast Notifications */}
       <AnimatePresence>

@@ -12,12 +12,16 @@ interface CartViewProps {
   cartItems: CartItem[];
   setCartItems: React.Dispatch<React.SetStateAction<CartItem[]>>;
   setView: (view: ViewState) => void;
+  authUser: { id: string; name: string; email: string } | null;
+  isAuthenticated: boolean;
 }
 
 export const CartView: React.FC<CartViewProps> = ({
   cartItems,
   setCartItems,
   setView,
+  authUser,
+  isAuthenticated,
 }) => {
   const updateQuantity = (productId: string, delta: number) => {
     setCartItems((prev) =>
@@ -66,8 +70,17 @@ export const CartView: React.FC<CartViewProps> = ({
     <div className="pb-16 space-y-6" id="cart-view-container">
       {/* View Title */}
       <div>
-        <h1 className="font-black text-2xl tracking-tight text-slate-900">Your Shopping Cart</h1>
-        <p className="text-xs text-slate-500">Review selected imports and speed parameters before transaction placement.</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-black text-2xl tracking-tight text-slate-900">Your Shopping Cart</h1>
+            <p className="text-xs text-slate-500">Review selected imports and speed parameters before transaction placement.</p>
+          </div>
+          {authUser && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
+              Signed in as <span className="font-semibold text-slate-900">{authUser.name.split(' ')[0]}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {cartItems.length === 0 ? (
@@ -260,15 +273,26 @@ export const CartView: React.FC<CartViewProps> = ({
             </div>
 
             <div className="space-y-3 pt-2">
-              <button
-                onClick={() => setView('checkout')}
-                disabled={checkedItems.length === 0}
-                className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none transition-all flex items-center justify-center gap-2"
-                type="button"
-              >
-                <Lock className="w-4 h-4" />
-                <span>Proceed to Checkout</span>
-              </button>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      setView('login');
+                      return;
+                    }
+                    setView('checkout');
+                  }}
+                  disabled={checkedItems.length === 0}
+                  className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                  type="button"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>{isAuthenticated ? 'Proceed to Checkout' : 'Sign in to Checkout'}</span>
+                </button>
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${isAuthenticated ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                  {isAuthenticated ? 'Authenticated' : 'Authentication required'}
+                </span>
+              </div>
 
               <button
                 onClick={() => setView('home')}
@@ -283,6 +307,11 @@ export const CartView: React.FC<CartViewProps> = ({
               <Lock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <span>We protect your card data using industry-standard AES encryption keys. Complete checkout on our secure ledger.</span>
             </div>
+            {!isAuthenticated && (
+              <div className="rounded-xl bg-rose-50 p-3.5 border border-rose-200 text-rose-700 text-xs">
+                Please sign in first to complete checkout and keep your order secure.
+              </div>
+            )}
           </div>
 
         </div>

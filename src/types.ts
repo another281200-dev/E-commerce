@@ -32,7 +32,7 @@ export interface CartItem {
   checked: boolean;
 }
 
-export type ViewState = 'home' | 'electronics' | 'fashion' | 'beauty' | 'cart' | 'checkout';
+export type ViewState = 'home' | 'electronics' | 'fashion' | 'beauty' | 'cart' | 'checkout' | 'login';
 
 export interface FilterState {
   category?: string;
