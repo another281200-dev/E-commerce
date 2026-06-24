@@ -1,4 +1,4 @@
-# Amazon Clone 2
+# E commerce website
 
 This contains everything you need to run your app locally.
 
